@@ -1,0 +1,170 @@
+---
+title: "The AI Agent Harness: Why Your LLM Needs a Control Layer"
+publishedAt: "2026-04-28"
+summary: "Large language models are powerful but chaotic on their own. An agent harness is the scaffolding that turns raw LLM intelligence into reliable, goal-directed software. Here's how it works — and why it matters."
+---
+
+There's a moment every AI developer hits. You've wired up your first LLM call, watched it spit out something impressively coherent, and immediately thought: *"Okay, but how do I make it actually do something?"*
+
+That gap — between an LLM that can talk and an agent that can act — is exactly what an **agent harness** fills.
+
+---
+
+## The Problem with a Bare LLM
+
+A raw language model is, at its core, a very sophisticated autocomplete engine. Feed it a prompt, get back text. That's it. It has no memory of yesterday's conversation, no ability to browse the web or query your database, no way to decide when it's done versus when it needs to try again.
+
+Think of it like hiring an exceptionally brilliant consultant who has amnesia, no phone, no computer, and can only answer one question at a time before forgetting everything. The raw capability is there. The *operational infrastructure* is not.
+
+An agent harness is that infrastructure.
+
+---
+
+## What Exactly Is an Agent Harness?
+
+An **agent harness** (sometimes called an agent framework or orchestration layer) is the software scaffolding that wraps an LLM and gives it the ability to:
+
+1. **Perceive** — receive structured input from the world (user queries, tool results, retrieved documents)
+2. **Reason** — use the LLM to decide what to do next
+3. **Act** — execute tools, call APIs, write to datastores
+4. **Reflect** — observe the outcome and loop back if needed
+
+It's the harness that turns a model's text output into a *plan*, routes that plan to real execution environments, and feeds results back into the model's context window for the next reasoning step.
+
+The term "harness" is deliberate. Just like a harness channels the raw power of a horse into directed, controlled movement, an agent harness channels the raw intelligence of an LLM into goal-directed behavior.
+
+---
+
+## The Core Components
+
+### 1. The Planner / Reasoner
+
+At the center of any harness sits the LLM itself, but used as a **planner** rather than just a text generator. The model is prompted (usually with a system prompt and a structured format) to produce not just answers but *decisions*:
+
+- What tool should I call next?
+- Do I have enough information to answer, or should I search for more?
+- Is this sub-task complete?
+
+Patterns like **ReAct** (Reason + Act) formalize this loop. The model outputs a chain of thought — `Thought → Action → Observation` — cycling until it reaches a final answer. The harness is responsible for parsing those structured outputs and routing them correctly.
+
+### 2. The Tool Layer
+
+Tools are the hands of an agent. They are functions the harness exposes to the LLM, each described in natural language so the model knows what they do and when to use them:
+
+```python
+@tool
+def search_web(query: str) -> str:
+    """Search the internet and return a summarized result for a given query."""
+    return tavily_client.search(query)
+```
+
+When the model emits `Action: search_web("latest research on transformer efficiency")`, the harness intercepts that, calls the real function, and injects the result back into the context window as an `Observation`.
+
+Common tool categories include:
+- **Retrieval tools** — vector search, document lookup, SQL queries
+- **Action tools** — sending emails, creating calendar events, writing to APIs
+- **Code execution tools** — running Python in a sandbox, evaluating expressions
+- **Perception tools** — reading URLs, parsing PDFs, processing images
+
+### 3. Memory and State Management
+
+This is where most toy projects fall apart. A stateless LLM has a context window — and that's it. A production harness needs at least three layers of memory:
+
+| Layer | What it stores | Where |
+|---|---|---|
+| **In-context (short-term)** | Current conversation, tool outputs | Context window |
+| **Episodic (session)** | What happened earlier this session | Redis / in-memory store |
+| **Long-term (semantic)** | Facts and documents from past interactions | Vector DB (Pinecone, pgvector) |
+
+Deciding what to put *into* context — and what to retrieve on demand — is one of the hardest engineering problems in agent design. Stuffing everything into the context window is expensive and hits token limits fast. Retrieving too little means the model works without enough grounding.
+
+### 4. The Execution Loop
+
+The harness drives a **reasoning loop** — often called an "agentic loop" — that runs until a termination condition is met:
+
+```
+while not done:
+    thought = llm.generate(context)
+    action = parse_action(thought)
+    if action == "final_answer":
+        done = True
+    else:
+        observation = execute_tool(action)
+        context.append(observation)
+```
+
+This sounds simple. In practice it needs robust handling for:
+- **Hallucinated tool calls** — the model invents a tool that doesn't exist
+- **Infinite loops** — the agent keeps retrying a failing step
+- **Token overflow** — the context grows beyond the model's limit
+- **Ambiguous termination** — the model never confidently decides it's done
+
+### 5. The Guardrail Layer
+
+Giving an LLM the ability to call real tools is powerful. It's also a liability. A well-designed harness includes guardrails at multiple levels:
+
+- **Input validation** — sanitize what the model sees (no injected instructions in retrieved docs)
+- **Output validation** — check tool call arguments before executing (no `DELETE FROM users` with no WHERE clause)
+- **Action budget** — limit how many tool calls the agent can make per session
+- **Human-in-the-loop checkpoints** — pause and ask for approval before irreversible actions
+
+---
+
+## Multi-Agent Systems: When One Agent Isn't Enough
+
+The real frontier isn't a single agent with many tools — it's **networks of specialized agents** coordinated by an orchestrator.
+
+Imagine building a system that researches a topic, drafts a report, edits it for clarity, and checks it for factual accuracy. You *could* try to do this with one giant prompt. Or you could build:
+
+- A **Research Agent** that searches and summarizes sources
+- A **Writer Agent** that drafts structured prose from those summaries
+- A **Critic Agent** that reviews the draft for gaps and inaccuracies
+- An **Orchestrator** that routes tasks between them
+
+Frameworks like **LangGraph** model this as a directed graph — nodes are agents or functions, edges are conditional transitions based on state. Google's **Agent Development Kit (ADK)** introduces a similar primitive: each agent is a node with its own tools, model, and instructions, and an orchestrator agent decides which sub-agent to call next.
+
+This composability is what makes agent harnesses genuinely powerful. Specialized agents are cheaper, faster, and more reliable than one mega-agent trying to do everything.
+
+---
+
+## The Harness Is the Product
+
+Here's the insight that changes how you think about agent development:
+
+**The LLM is a commodity. The harness is the competitive moat.**
+
+Swapping GPT-4 for Claude or Gemini in most systems is a configuration change. But the memory architecture, the tool design, the loop logic, the guardrails, the multi-agent coordination — that's where months of engineering goes. That's what makes an agent actually *work* in production.
+
+When someone says "we built an AI agent that does X," what they actually built is a harness that enables an LLM to do X reliably. The model is the engine. The harness is the car.
+
+---
+
+## Practical Takeaways
+
+If you're building an agent today:
+
+1. **Start with the tools, not the model.** Define what actions your agent needs to take before you write a single prompt. The tool signature *is* the spec.
+
+2. **Make your prompts structural contracts.** The system prompt should specify the exact format the model must respond in. Freeform output from an agentic loop is a debugging nightmare.
+
+3. **Add observability from day one.** Log every reasoning step, every tool call, every observation. You cannot debug a black-box loop.
+
+4. **Design for failure.** Your agent *will* get stuck, hallucinate tool names, and misinterpret instructions. Build retry logic, fallback paths, and graceful degradation before you need them.
+
+5. **Evaluate continuously.** Run your agent against a fixed set of benchmark tasks and track performance over time. Without evals, every model or prompt change is flying blind.
+
+---
+
+## Where This Is Going
+
+Agent harnesses are the new application layer. The same way web frameworks abstracted away raw HTTP and gave us Rails, Django, and Express — agent frameworks are abstracting away raw LLM calls and giving us LangGraph, ADK, CrewAI, and AutoGen.
+
+We're still early. The patterns are still forming. The best harness designs of 2027 probably don't exist yet.
+
+But the underlying idea — that turning intelligence into *reliable, controllable action* requires a principled control layer — is here to stay.
+
+Build the harness. The model is just the beginning.
+
+---
+
+*If this resonated, I'm building AI-powered systems at the intersection of backend engineering and LLM orchestration. Feel free to reach out.*
