@@ -28,8 +28,8 @@ export function ModeToggle() {
       Math.max(y, window.innerHeight - y)
     );
 
-    // @ts-expect-error – startViewTransition is not yet in TS lib
-    const transition = document.startViewTransition(() => {
+    // @ts-ignore – startViewTransition is not yet in all TS libs
+    const transition = (document as any).startViewTransition(() => {
       setTheme(nextTheme);
     });
 
