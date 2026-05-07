@@ -1,0 +1,179 @@
+---
+title: "The Column Named amt_v2 Is Why Your Enterprise AI Fails"
+publishedAt: "2026-05-01"
+summary: "Enterprise AI systems don't fail because the models are bad. They fail because the context is wrong. Here's how I built a multi-agent pipeline to fix that — and the design decisions that made it actually work."
+---
+
+There's a database I worked with recently. It had 47 tables. Three of them were named `t_03`, `usr_trx_dt`, and `amt_v2`. No column descriptions. No ownership. No indication of when they were last written to, or whether they were still in use.
+
+When you ask an AI agent to reason over that schema, it doesn't fail because GPT-4 or Gemini is a bad model. It fails because the model has no legitimate basis for confidence. It's not hallucinating — it's guessing, because it has nothing else to go on.
+
+That's the problem this project is built to solve.
+
+---
+
+## The Real Failure Mode
+
+Most enterprise data is ungoverned in exactly this way. Not because engineers are lazy, but because governance is expensive and schemas accumulate over years. `amt_v2` was probably `amount` at some point. Someone ran a migration, appended `_v2`, and moved on. Nobody wrote it down. The lineage is in the commit history nobody reads.
+
+When you wire an AI agent into this, you're not giving it a database — you're giving it archaeology. And unlike a human data analyst who can pick up the phone and ask someone what `t_03` means, an LLM will confidently construct an interpretation and run with it.
+
+**Wrong context is not a neutral failure. It's worse than no context.** A model working with missing information tends to hedge. A model working with wrong information tends to commit — and produce outputs that look authoritative but are built on fiction.
+
+The solution isn't a smarter model. It's a governed context layer built *before* the model ever sees the data.
+
+---
+
+## The Architecture
+
+The pipeline is a LangGraph multi-agent graph. Six agents, strict Pydantic contracts between every boundary, and a final aggregation step that produces a trust-scored context layer ready for downstream AI consumption.
+
+```python
+from langgraph.graph import StateGraph, END
+from pydantic import BaseModel
+
+class PipelineState(BaseModel):
+    schema: dict
+    pii_report: dict | None = None
+    profile: dict | None = None
+    lineage: dict | None = None
+    semantics: dict | None = None
+    trust_scores: dict | None = None
+    context_layer: dict | None = None
+
+graph = StateGraph(PipelineState)
+
+graph.add_node("pii_gate",     run_pii_gate)
+graph.add_node("profiler",     run_profiler)
+graph.add_node("lineage",      run_lineage)
+graph.add_node("semantic",     run_semantic_agent)
+graph.add_node("trust_scorer", run_trust_scorer)
+graph.add_node("aggregator",   run_aggregator)
+
+# PII gate runs first — always
+graph.set_entry_point("pii_gate")
+
+# Profiler and Lineage fan out in parallel
+graph.add_edge("pii_gate", "profiler")
+graph.add_edge("pii_gate", "lineage")
+
+# Semantic waits for both
+graph.add_edge("profiler", "semantic")
+graph.add_edge("lineage",  "semantic")
+
+graph.add_edge("semantic",     "trust_scorer")
+graph.add_edge("trust_scorer", "aggregator")
+graph.add_edge("aggregator",   END)
+```
+
+The topology is not accidental. Let me explain why each piece is built the way it is.
+
+---
+
+## PII Detection: Why It Has to Be Deterministic
+
+The first agent in the pipeline is a gate, not a generator. It scans the raw DDL for PII signals — column names, patterns, semantic hints — and masks them before any LLM call happens.
+
+This is deliberately not LLM-based. Here's why: **sending sensitive data to an LLM to ask if it's sensitive is itself a governance violation.**
+
+If `usr_email` or `ssn_hash` or `dob_raw` passes through a third-party model call, you've already failed your compliance requirement — regardless of what the model says about it. The act of sending it is the problem.
+
+So PII detection is a deterministic policy gate: nine categories (`PII_NAME`, `PII_EMAIL`, `PII_SSN`, `PII_DOB`, `PII_PHONE`, `PII_ADDRESS`, `PII_FINANCIAL`, `PII_HEALTH`, `PII_CREDENTIALS`), each with a curated set of regex patterns and keyword matches. No ambiguity, no model call, no data leaving your trust boundary.
+
+```python
+PII_PATTERNS = {
+    "PII_EMAIL":     [r"\bemail\b", r"\be_mail\b", r"\bmail_addr\b"],
+    "PII_SSN":       [r"\bssn\b", r"\bsocial_sec\b", r"\btax_id\b"],
+    "PII_FINANCIAL": [r"\bamt\b", r"\bamount\b", r"\bbal\b", r"\baccount_no\b"],
+    # ...
+}
+
+def classify_column(col_name: str) -> list[str]:
+    flags = []
+    for category, patterns in PII_PATTERNS.items():
+        if any(re.search(p, col_name, re.IGNORECASE) for p in patterns):
+            flags.append(category)
+    return flags
+```
+
+If a column is flagged, it gets masked in the DDL before the Semantic Agent ever sees it. The mask propagates into the final context layer so downstream consumers know the field exists but can't access its definition through this channel.
+
+This is the only agent in the pipeline that runs synchronously and blocks all downstream processing. That's intentional. There's no version of this pipeline where PII detection is optional or asynchronous.
+
+---
+
+## Parallel Execution: Profiler and Lineage
+
+Once the schema is clean, the Profiler and Lineage agents run in parallel — a LangGraph fan-out. This isn't just a performance optimization. It's a structural statement about dependency.
+
+The **Profiler Agent** reasons about individual columns: data types, null rates, cardinality hints, anomalies. It answers questions like: *is this column actually used? Does its type match what the name implies?*
+
+The **Lineage Agent** reasons about relationships between tables: foreign key candidates, join patterns, implicit dependencies. A table named `usr_trx_dt` with a column `usr_id` probably relates to a users table — the lineage agent makes that inference explicit.
+
+Neither needs the other's output to start. They're independent analyses of the same input. Running them sequentially would be pure waste.
+
+The Semantic Agent that follows them does need both. It uses the profiler's column characterizations and the lineage map to generate business definitions and semantic types. Without the profiler, it's naming things without data. Without lineage, it's naming things without relationships. LangGraph's fan-in — both edges converging on the Semantic node — enforces this correctly.
+
+---
+
+## Trust Scoring: The Governance Floor
+
+This is the most consequential design decision in the system.
+
+Every table in the output gets a trust score between 0 and 1. The scoring is hybrid: **deterministic rules carry 0.4 weight, LLM reasoning carries 0.6 weight**. But there's a governance floor that can only move the final score downward, never upward.
+
+```python
+def compute_trust_score(
+    deterministic_score: float,
+    llm_score: float,
+    governance_flags: list[str]
+) -> float:
+    raw_score = (0.4 * deterministic_score) + (0.6 * llm_score)
+
+    # Governance floor: structural red flags cap the score
+    penalty = 0.0
+    if "NO_PRIMARY_KEY"   in governance_flags: penalty += 0.30
+    if "HIGH_NULL_RATE"   in governance_flags: penalty += 0.20
+    if "NO_DEFINITION"    in governance_flags: penalty += 0.15
+    if "UNRESOLVED_PII"   in governance_flags: penalty  = 1.0  # full block
+
+    return max(0.0, raw_score - penalty)
+```
+
+The intuition: an LLM can reason well about semantic plausibility. It cannot override the fact that a table has no primary key, a 60% null rate across its columns, and no discernible owner. Those structural facts are governance facts — they don't get overridden by model confidence.
+
+This prevents a specific failure mode I thought about carefully: an LLM generating a fluent, confident business definition for a table called `t_03` and scoring it 0.85 trust. The definition might be plausible. The table might still be completely ungoverned. A downstream agent consuming a high-trust score on an ungoverned table makes decisions on a foundation it has no right to be confident about.
+
+The governance floor ensures the score means something. High trust requires both semantic coherence *and* structural health.
+
+---
+
+## Pydantic Contracts Between Every Agent Boundary
+
+Every agent in this pipeline produces a typed Pydantic output. This is non-negotiable in multi-agent systems and the reason is specific: **LLM outputs are probabilistic. Agent boundaries need to be deterministic.**
+
+If the Profiler Agent returns an untyped dict and the Semantic Agent receives it, you've introduced a silent failure surface. The Semantic Agent might receive `null_rate` as a string, or a key might be missing, or a field might be named slightly differently depending on which model version responded. You won't find out until something downstream produces wrong output — and by then you've lost the trace.
+
+With Pydantic, the failure is loud and immediate. If the Profiler's output doesn't satisfy `ProfilerOutput`, the pipeline stops at that boundary. That's the right behavior. Garbage propagation in a multi-agent pipeline is far more dangerous than a loud, early failure.
+
+The contracts also serve as documentation. Reading the Pydantic models tells you exactly what flows between agents — which is something you cannot get from reading prompt templates.
+
+---
+
+## Governance-Aware Degradation
+
+The final output isn't just a context layer. It's a context layer with trust metadata attached to every element.
+
+Downstream agents consuming this layer don't receive a binary "use this / don't use this" signal. They receive trust scores, governance flags, and PII classifications — and they're expected to act accordingly.
+
+A query agent with access to this layer can: answer confidently from high-trust tables, hedge on medium-trust tables, refuse to reason from low-trust tables. The governance information propagates through the system rather than being absorbed and discarded at one point.
+
+This is what governance-aware degradation looks like in practice. The system doesn't fail catastrophically when it encounters `amt_v2` with no definition and a 40% null rate. It acknowledges the uncertainty, surfaces it, and lets the consuming layer decide how to handle it. Controlled uncertainty is far more useful than confident fiction.
+
+---
+
+The fundamental shift here isn't technical. It's epistemic.
+
+Most AI systems are built on an implicit assumption: that the context they operate on is trustworthy. Enterprise data destroys that assumption. And once you've accepted that context needs to be *earned* — through profiling, lineage, classification, and scoring — you realize that the model was never the weak link.
+
+The weak link was always the unexamined ground beneath it.

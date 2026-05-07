@@ -8,9 +8,9 @@ export const DATA = {
   location: "Pune, MH",
   locationLink: "https://www.google.com/maps/place/Pune",
   description:
-    "Backend, Cloud, and AI Developer focused on building scalable and intelligent systems.",
+    "I build AI systems where outputs are evaluated, governed, and trusted before they're used.",
   summary:
-    "I am a third-year Computer Engineering student at Pune Institute of Computer Technology with strong foundations in backend system design and full-stack development. I have built applications using Express.js, Spring Boot, FastAPI, and Next.js, with React on the frontend. I am currently expanding into Agentic AI engineering, working with frameworks such as LangChain, LangGraph, and Google ADK to build intelligent systems powered by large language models. I also have experience using cloud platforms to deploy and scale backend services and AI-powered applications. I am particularly interested in building intelligent systems that combine robust software architecture with modern AI capabilities.",
+    "I'm a third-year Computer Engineering student at PICT, Pune - currently building the AI recommendation pipeline at MindStriX from scratch, and previously a Backend Intern at Tenancy Passport, London\n\nI don't just integrate AI - I think about what happens when it's wrong. My projects are designed around evaluation, governance, and trust: from a multi-agent data context layer that flags ungoverned definitions before propagating them, to a RAG clinical assistant where answer faithfulness is the core constraint.\n\nI've rewired how I build - Cursor and Claude Code are daily tools, not experiments.\n\nI build systems that reach real users.",
   avatarUrl: "/me.png",
   skills: [
     "Langchain",
@@ -80,7 +80,7 @@ export const DATA = {
       start: "April 2026",
       end: "Present",
       description:
-        "Building AI agents and orchestrating APIs while making them production-ready using Google Cloud.",
+        "Building the AI recommendation pipeline at MindStriX from scratch - Gemini Vision room analysis, multimodal embeddings fused via normalize(img + 0.5×text), and HNSW-indexed pgvector on GCP. Zero existing infrastructure, every architectural decision owned, serving 900+ indexed products.",
     },
     {
       company: "Tenancy Passport",
@@ -92,7 +92,7 @@ export const DATA = {
       start: "Jan 2026",
       end: "April 2026",
       description:
-        "Took full ownership of a backend product built with Java and Spring Boot, designing, implementing, and testing access control mechanisms that reduced unauthorized API usage by 40%, enforced payment compliance across agencies, and restricted platform access for agents belonging to agencies blocked due to unpaid bills. Furthermore I evaluated and selected a suitable third-party credit verification provider after comparing multiple options, enabling reliable real-time tenant credit checks for the United Kingdom (UK) rental process.",
+        "Built agency-level access control that blocked non-paying agencies from critical paid endpoints - enforcing payment compliance across the platform and reducing unauthorized API usage by 40%. Evaluated Experian, Equifax, and TransUnion for real-time tenant credit verification - integrated and validated Experian's API in sandbox against UK rental workflows.",
     },
   ],
   education: [
@@ -115,6 +115,64 @@ export const DATA = {
   ],
   projects: [
     {
+      title: "Multi-Agent Data Context & Trust Layer",
+      href: "https://github.com/anaypatil101/Multi-Agent-Data-Context-Trust-Layer",
+      dates: "",
+      active: true,
+      description:
+        "Enterprise AI fails where data governance fails. Built a LangGraph multi-agent pipeline that transforms ungoverned schemas into a trusted context layer - definitions, semantic types, PII classification, and calibrated trust scores. Because wrong context is worse than no context.",
+      technologies: [
+        "LangGraph",
+        "LangChain",
+        "Python",
+        "FastAPI",
+        "PostgreSQL",
+        "GCP",
+      ],
+      links: [
+        {
+          type: "Source",
+          href: "https://github.com/anaypatil101/Multi-Agent-Data-Context-Trust-Layer",
+          icon: <Icons.github className="size-3" />,
+        },
+        {
+          type: "Website",
+          href: "https://web-production-16ba9.up.railway.app/demo/html",
+          icon: <Icons.globe className="size-3" />,
+        },
+      ],
+      image: "/context-layer-output.png",
+    },
+    {
+      title: "MedicAI - RAG based Clinical Reference Assistant",
+      href: "https://github.com/anaypatil101/MedicAI",
+      dates: "",
+      active: true,
+      description:
+        "Context-aware RAG medical assistant that provides accurate, cited answers to clinical queries. Includes a PDF ingestion and embedding pipeline with a FAISS vector store for fast, low-latency, document-grounded retrieval that reduces hallucinations.",
+      technologies: [
+        "Python",
+        "Langchain",
+        "HuggingFace",
+        "Llama 3",
+        "FAISS",
+        "FastAPI",
+      ],
+      links: [
+        {
+          type: "Source",
+          href: "https://github.com/anaypatil101/MedicAI",
+          icon: <Icons.github className="size-3" />,
+        },
+        {
+          type: "Website",
+          href: "https://medicai1.streamlit.app/",
+          icon: <Icons.globe className="size-3" />,
+        },
+      ],
+      image: "/medic-ai.png",
+    },
+    {
       title: "Real-Time Stock Market Simulator",
       href: "https://github.com/anaypatil101/realtime-stock-simulator",
       dates: "",
@@ -122,10 +180,12 @@ export const DATA = {
       description:
         "Real-time stock market simulator using WebSockets for live price updates, virtual trading with Razorpay wallet top-ups, and AI-based insights to guide buy decisions.",
       technologies: [
+        "Groq LLM",
+        "MongoDB",
         "Node.js",
         "Express.js",
         "JWT Authentication",
-        "MongoDB",
+        
         "Socket.IO",
         "TailwindCSS",
         "React.js",
@@ -167,30 +227,6 @@ export const DATA = {
       image: "/pulzion.png",
     },
     {
-      title: "MedicAI - RAG based Clinical Reference Assistant",
-      href: "https://github.com/anaypatil101/MedicAI",
-      dates: "",
-      active: true,
-      description:
-        "Context-aware RAG medical assistant that provides accurate, cited answers to clinical queries. Includes a PDF ingestion and embedding pipeline with a FAISS vector store for fast, low-latency, document-grounded retrieval that reduces hallucinations.",
-      technologies: [
-        "Python",
-        "Langchain",
-        "HuggingFace",
-        "Llama 3",
-        "FAISS",
-        "FastAPI",
-      ],
-      links: [
-        {
-          type: "Source",
-          href: "https://github.com/anaypatil101/MedicAI",
-          icon: <Icons.github className="size-3" />,
-        },
-      ],
-      image: "/medic-ai.png"
-    },
-    {
       title: "PASC Co-Curricular Activity Management Platform",
       href: "https://github.com/anaypatil101/PASC-Co-Curricular-Activity-Management-System",
       dates: "",
@@ -213,30 +249,6 @@ export const DATA = {
         },
       ],
       image: "/cca.png"
-    },
-    {
-      title: "Rentora - Property Rental Marketplace",
-      href: "https://github.com/anaypatil101/PASC-Co-Curricular-Activity-Management-System",
-      dates: "",
-      active: true,
-      description: "Rentora is a rental marketplace platform where users can list properties, explore available listings, and directly message landlords. The application includes location visualization using the Mapbox API, image storage through the Cloudinary API, secure authentication using JSON Web Token, and a MongoDB database, built with Next.js.",
-      technologies: [
-        "Next.js",
-        "Next Auth",
-        "Typescript",
-        "Mongo DB",
-        "Mapbox API",
-        "Cloudinary",
-        "TailwindCSS",
-      ],
-      links: [
-        {
-          type: "Source",
-          href: "https://github.com/anaypatil101/rentora-rental-marketplace",
-          icon: <Icons.github className="size-3" />,
-        },
-      ],
-      image: "/rentora.png"
     },
      {
       title: "AI News Digest",
