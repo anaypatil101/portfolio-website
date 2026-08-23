@@ -54,7 +54,7 @@ export const DATA = {
       },
       X: {
         name: "",
-        url: "https://x.com/anaytech",
+        url: "https://x.com/anaystwt",
         icon: Icons.x,
 
         navbar: true,
@@ -71,16 +71,28 @@ export const DATA = {
 
   work: [
     {
+      company: "Barclays",
+      href: "https://home.barclays/",
+      badges: [],
+      location: "Pune, IND",
+      title: "Software Engineer Intern",
+      logoUrl: "/barclays.png",
+      start: "June 2026",
+      end: "August 2026",
+      description:
+        "During my time as a Summer Intern, I developed a full-stack Django application for Technical Implementation Plan (TIP) generation from deployment notes, streamlining documentation and significantly reducing manual effort and automated the holiday lookup update process by developing a reusable script that eliminated manual intervention, improved accuracy, and enabled adoption across multiple teams in the organization.",
+    },
+    {
       company: "MindstriX Technologies",
       href: "https://www.linkedin.com/company/mindstrix/",
       badges: [],
       location: "Pune, IND",
-      title: "AI Backend Engineer Intern",
+      title: "SDE Intern",
       logoUrl: "/mindstrix.png",
       start: "April 2026",
       end: "Present",
       description:
-        "Building AI agents and orchestrating APIs while making them production-ready using Google Cloud.",
+        "Built an AI-powered furniture recommendation pipeline on GCP - analyzes room photos via Gemini Vision and retrieves matched products using multimodal embeddings + pgvector, serving 900+ indexed products and designed embedding fusion strategy normalize(img + 0.5×text) and chose HNSW indexing for sub-second retrieval - with explicit scale thresholds defined for 100K+ products",
     },
     {
       company: "Tenancy Passport",
