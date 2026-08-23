@@ -90,7 +90,7 @@ export const DATA = {
       title: "SDE Intern",
       logoUrl: "/mindstrix.png",
       start: "April 2026",
-      end: "Present",
+      end: "June 2026",
       description:
         "Built an AI-powered furniture recommendation pipeline on GCP - analyzes room photos via Gemini Vision and retrieves matched products using multimodal embeddings + pgvector, serving 900+ indexed products and designed embedding fusion strategy normalize(img + 0.5×text) and chose HNSW indexing for sub-second retrieval - with explicit scale thresholds defined for 100K+ products",
     },
