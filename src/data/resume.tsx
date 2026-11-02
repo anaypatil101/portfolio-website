@@ -10,7 +10,7 @@ export const DATA = {
   description:
     "Backend, Cloud, and AI Developer focused on building scalable and intelligent systems.",
   summary:
-    "I am a third-year Computer Engineering student at Pune Institute of Computer Technology with strong foundations in backend system design and full-stack development. I have built applications using Express.js, Spring Boot, FastAPI, and Next.js, with React on the frontend. I am currently expanding into Agentic AI engineering, working with frameworks such as LangChain, LangGraph, and Google ADK to build intelligent systems powered by large language models. I also have experience using cloud platforms to deploy and scale backend services and AI-powered applications. I am particularly interested in building intelligent systems that combine robust software architecture with modern AI capabilities.",
+    "I am a final year Computer Engineering student at Pune Institute of Computer Technology with strong foundations in backend system design and full-stack development. I have built applications using Express.js, Spring Boot, FastAPI, and Next.js, with React on the frontend. I am currently expanding into Agentic AI engineering, working with frameworks such as LangChain, LangGraph, and Google ADK to build intelligent systems powered by large language models. I also have experience using cloud platforms to deploy and scale backend services and AI-powered applications. I am particularly interested in building intelligent systems that combine robust software architecture with modern AI capabilities.",
   avatarUrl: "/me.png",
   skills: [
     "Langchain",
